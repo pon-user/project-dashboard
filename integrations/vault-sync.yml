@@ -1,0 +1,38 @@
+name: Dashboard private sync
+on:
+  push:
+    branches: [main]
+    paths: ['**/進捗管理/**','01_索引/01_プロジェクト一覧.md','.github/workflows/dashboard-sync.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dashboard-private-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read dashboard converter from main
+        run: git clone --depth=1 --branch main https://github.com/pon-user/project-dashboard.git "$RUNNER_TEMP/dashboard"
+      - name: Validate and convert private canonical ledgers
+        run: node "$RUNNER_TEMP/dashboard/scripts/convert.mjs" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/dashboard.json"
+      - name: Send privately
+        env:
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+          SITE_ACCESS: ${{ secrets.DASHBOARD_SITE_ACCESS }}
+          SYNC_KEY: ${{ secrets.DASHBOARD_SYNC_KEY }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 60 "$DASHBOARD_URL/api/sync" -H "OAI-Sites-Authorization: Bearer $SITE_ACCESS" -H "X-Sync-Key: $SYNC_KEY" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/dashboard.json"
+      - name: Report failure without private content
+        if: failure()
+        env:
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+          SITE_ACCESS: ${{ secrets.DASHBOARD_SITE_ACCESS }}
+          SYNC_KEY: ${{ secrets.DASHBOARD_SYNC_KEY }}
+        run: |
+          curl --fail --silent --max-time 30 "$DASHBOARD_URL/api/sync" -H "OAI-Sites-Authorization: Bearer $SITE_ACCESS" -H "X-Sync-Key: $SYNC_KEY" -H 'Content-Type: application/json' --data '{"failure":true}'
