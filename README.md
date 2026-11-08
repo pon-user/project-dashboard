@@ -17,3 +17,9 @@ Vault Actions settings: `DASHBOARD_URL` variable, `DASHBOARD_SITE_ACCESS` and `D
 `npm ci`, `node --test tests/*.test.mjs`, `npx tsc --noEmit`, `npm run build`.
 
 Synthetic tests only are committed. Actual private data tests are run outside this repository. Use `node scripts/convert.mjs <vault> <private-output.json>` for manual conversion. Never commit that output.
+
+## Current document audit registry
+
+The converter also reads `*差分監査レジストリ.json` files with schema `novel-audit-1`. A registry replaces the historical document snapshot for its project, keeps every file's audit task ID and full blob SHA, and displays its baseline commit separately from the synchronized task snapshot commit. An inherited completed review must match the file's SHA. Registry entries do not complete their audit tasks. Newly added files require a regenerated registry before claiming current document coverage.
+
+Only synthetic fixtures belong in this repository. The private registry and conversion output remain in the vault or a private temporary directory. The converter hashes source ledger files and refuses a dirty tracked checkout when reporting a source commit.
